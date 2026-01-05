@@ -1,0 +1,46 @@
+export const ERROR_CODES = {
+    BAD_REQUEST: "BAD_REQUEST",
+    UNAUTHORIZED: "UNAUTHORIZED",
+    FORBIDDEN: "FORBIDDEN",
+    NOT_FOUND: "NOT_FOUND",
+    CONFLICT: "CONFLICT",
+    VALIDATION_FAILED: "VALIDATION_FAILED",
+    TOKEN_EXPIRED: "TOKEN_EXPIRED",
+    INVALID_TOKEN: "INVALID_TOKEN",
+    INTERNAL_ERROR: "INTERNAL_ERROR",
+    VERIFY_ACCOUNT: "VERIFY_ACCOUNT",
+    WRONG_PASSWORD: "WRONG_PASSWORD",
+    INVALID_AUTH_TYPE: "INVALID_AUTH_TYPE",
+    TOO_MANY_REQUEST: "TOO_MANY_REQUEST",
+    SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE"
+} as const;
+
+export type ErrorCode =
+  typeof ERROR_CODES[keyof typeof ERROR_CODES];
+
+export type ApiSuccess<T = void> = {
+  success: true;
+  message: string;
+  data: T;
+};
+
+export type APIErrorDetails = 
+  {
+    validationError: {
+      field: string
+      message: string
+    }[]
+  } |
+  Record<string, unknown>
+
+
+export type ApiError = {
+  success: false;
+  error: {
+    code: ErrorCode;
+    message: string;
+    details?: APIErrorDetails;
+  };
+};
+
+export type ApiResponse<T> = ApiSuccess<T> | ApiError;
