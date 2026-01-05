@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Loader2, MessageSquare, ShieldAlert, Users, FlagTriangleRight } from "lucide-react";
 
@@ -12,8 +12,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useWorkspaceStore } from "@/store/userDataStore";
 import { useFetchTasksDetailsQuery } from "@/utils/queries/task.queries";
 import { GenericUserResponse, taskDescussionsData, taksViewDataV2 } from "@/utils/interfaces/responses/task.response";
-import { getSocket } from "@/lib/socket"; 
+import { getSocket } from "@/lib/socket";
 import { statusBadgeStyles } from "@/components/layout/common";
+import { createToken } from "@/utils/jwt";
+import { Socket } from "socket.io-client";
 
 
 type TaskStatusKey = taksViewDataV2["status"];
@@ -24,7 +26,7 @@ const statusCopy: Record<TaskStatusKey, string> = {
     IN_PROGRESS: "In progress",
     DONE: "Completed",
 };
- 
+
 
 const priorityCopy: Record<TaskPriorityKey, string> = {
     URGENT: "Urgent",
@@ -107,20 +109,48 @@ const Page = () => {
     const projectId = params?.projectid ?? "";
     const taskId = params?.taskid ?? "";
     const { currentWorkspace, userStoreData } = useWorkspaceStore();
-    if(!userStoreData) {
+    if (!userStoreData) {
         return null;
     }
     const workspaceId = currentWorkspace?.workspaceId ?? "";
     const [draftComment, setDraftComment] = useState("");
     const [discussionEntries, setDiscussionEntries] = useState<taskDescussionsData[]>([]);
-    // const token = createToken(userStoreData.userData.id)
-    const socket = getSocket(userStoreData.userData.id);
-    
-    useEffect(() => {  
-        socket.emit("task:join", { taskId });
+    const [token, setToken] = useState<string | null>(null);
+    const socketRef = useRef<Socket | null>(null);
 
-        const onNewComment = (comment: taskDescussionsData) => { 
-            setDiscussionEntries((prev) => { 
+    useEffect(() => {
+        async function fetchToken() {
+            const res = await fetch("/api/token", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    userId: userStoreData?.userData.id,
+                }),
+            });
+
+            const data = await res.json();
+            setToken(data.token);
+        }
+
+        fetchToken();
+    }, [userStoreData.userData.id]);
+
+    useEffect(() => {
+        if (!token) return;
+
+        socketRef.current = getSocket(token);
+        return () => {
+            socketRef.current?.disconnect();
+            socketRef.current = null;
+        }
+    }, [token]);
+
+    useEffect(() => {
+        if (!socketRef.current) return;
+        socketRef.current.emit("task:join", { taskId });
+
+        const onNewComment = (comment: taskDescussionsData) => {
+            setDiscussionEntries((prev) => {
                 const alreadyExists = prev.some((entry) => entry.id === comment.id);
                 if (alreadyExists) return prev;
 
@@ -130,13 +160,13 @@ const Page = () => {
             });
 
         };
-        socket.on("task:comment:new", onNewComment);
+        socketRef.current.on("task:comment:new", onNewComment);
 
         return () => {
-            socket.emit("task:leave", { taskId });
-            socket.off("task:comment:new", onNewComment);
+            socketRef.current?.emit("task:leave", { taskId });
+            socketRef.current?.off("task:comment:new", onNewComment);
         }
-    }, [taskId]) 
+    }, [taskId,socketRef.current]);
 
     if (!currentWorkspace) {
         return null;
@@ -150,7 +180,8 @@ const Page = () => {
     }, [taskDetails]);
 
     const handleComment = () => {
-        socket.emit("task:comment:create", {
+        if(!socketRef.current) return;
+        socketRef.current.emit("task:comment:create", {
             taskId,
             content: draftComment,
         });

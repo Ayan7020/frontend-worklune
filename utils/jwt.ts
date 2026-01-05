@@ -1,10 +1,15 @@
-import Jwt from "jsonwebtoken";
+import { SignJWT } from "jose";
 
-export const createToken = (userId: string) => {
-  const token = Jwt.sign(
-    { userId },
-    "bd282eabaf2311b6167d11b5d962c9078b07917803218ee215dd711ea04a5cc2"
-  );
+const secret = new TextEncoder().encode(
+  process.env.JWT_SECRET!
+);
+
+export async function createToken(userId: string) {
+  const token = await new SignJWT({ userId })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("1h")
+    .sign(secret);
 
   return token;
 }
