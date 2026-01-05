@@ -1,6 +1,5 @@
 import { ERROR_CODES } from "@/types/api";
-import { apiClient } from "./axios";
-import axios from "axios"; 
+import { apiClient } from "./axios"; 
 
 let isRefreshing = false;
 let refreshSubscriber: (() => void)[] = []
