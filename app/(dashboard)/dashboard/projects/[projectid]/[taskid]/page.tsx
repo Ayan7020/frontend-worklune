@@ -148,10 +148,21 @@ const Page = () => {
 
     useEffect(() => { 
         if (!socketRef.current) return; 
-        socketRef.current.emit("task:join", { taskId });
+        
+        const Joinroom = () => {
+            console.log("Joinging room")
+            socketRef.current!.emit("task:join", { taskId });
+        }
+
+        if(socketRef.current.connected) {
+            Joinroom();
+        } 
+        
+        socketRef.current.on("connect",Joinroom);
 
         const onNewComment = (comment: taskDescussionsData) => {
             setDiscussionEntries((prev) => { 
+                console.log("Coment",comment)
                 const alreadyExists = prev.some((entry) => entry.id === comment.id);
                 if (alreadyExists) return prev;
 
@@ -165,9 +176,10 @@ const Page = () => {
 
         return () => { 
             socketRef.current?.emit("task:leave", { taskId });
+            socketRef.current?.off("connect", Joinroom);
             socketRef.current?.off("task:comment:new", onNewComment);
         }
-    }, [taskId,socketRef.current?.id]);
+    }, [taskId,token]);
 
     if (!currentWorkspace) {
         return null;
