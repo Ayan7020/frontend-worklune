@@ -144,13 +144,14 @@ const Page = () => {
             socketRef.current = null;
         }
     }, [token]);
+ 
 
-    useEffect(() => {
-        if (!socketRef.current) return;
+    useEffect(() => { 
+        if (!socketRef.current) return; 
         socketRef.current.emit("task:join", { taskId });
 
         const onNewComment = (comment: taskDescussionsData) => {
-            setDiscussionEntries((prev) => {
+            setDiscussionEntries((prev) => { 
                 const alreadyExists = prev.some((entry) => entry.id === comment.id);
                 if (alreadyExists) return prev;
 
@@ -162,11 +163,11 @@ const Page = () => {
         };
         socketRef.current.on("task:comment:new", onNewComment);
 
-        return () => {
+        return () => { 
             socketRef.current?.emit("task:leave", { taskId });
             socketRef.current?.off("task:comment:new", onNewComment);
         }
-    }, [taskId,socketRef.current]);
+    }, [taskId,socketRef.current?.id]);
 
     if (!currentWorkspace) {
         return null;
@@ -180,7 +181,7 @@ const Page = () => {
     }, [taskDetails]);
 
     const handleComment = () => {
-        if(!socketRef.current) return;
+        if(!socketRef.current) return;  
         socketRef.current.emit("task:comment:create", {
             taskId,
             content: draftComment,
